@@ -43,6 +43,8 @@ days=$((100 * 365))
 MSG="line:$LINENO ERROR host fqdn required."
 fqdn=$1
 
+passwd=mypass
+
 ###############################################################
 MSG="line:$LINENO FATAL while making OPENSSL_CONF file."
 export OPENSSL_CONF=$tmpd/openssl.conf
@@ -51,7 +53,6 @@ cat	<<EOF	> $OPENSSL_CONF
 [ req ]
 distinguished_name     = req_distinguished_name
 prompt                 = no
-output_password        = mypass
 
 [ req_distinguished_name ]
 C                      = GB
@@ -76,9 +77,16 @@ touch $cad/index.txt
 MSG="line:$LINENO ERROR while generating a self signed root certificatea self signed root certificate."
 openssl req -x509	\
 	-newkey rsa:2048	\
-	-keyout $cad/key.pem	\
+	-passout pass:mypass	\
+	-keyout $cad/keyencd.pem\
 	-out $cad/ca.pem	\
 	-days $days
+
+MSG="line:$LINENO ERROR while decrypting private key."
+openssl rsa	\
+	-in $cad/keyencd.pem	\
+	-passin pass:mypass	\
+	-out $cad/key.pem
 
 ################################################################
 MSG line:$LINENO INFO generated for $fqdn
