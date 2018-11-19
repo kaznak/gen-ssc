@@ -1,0 +1,88 @@
+#!/bin/bash
+
+set -Cu
+set -Ee
+set -o pipefail
+
+based=$(dirname $0)/..
+pname=$(basename $0)
+stime=$(date +%Y%m%d%H%M%S%Z)
+
+exec 3>&2
+# logd=$based/log
+# exec 3>&2 2>$logd/$pname.$stime.$$.log
+set -vx
+
+MSG() {
+    echo "$pname pid:$$ stime:$stime etime:$(date +%Y%m%d%H%M%S%Z) $@"	>&3
+}
+
+tmpd=$(mktemp -d --suffix=".$pname.$stime.$$")
+if [ 0 -ne "$?" ] ; then
+    MSG FATAL can not make temporally directory.
+    exit 1
+fi
+
+trap 'BEFORE_EXIT' EXIT
+BEFORE_EXIT()	{
+    rm -rf $tmpd
+}
+
+trap 'ERROR_HANDLER' ERR
+export MSG
+ERROR_HANDLER()	{
+    [ "$MSG" ] && MSG $MSG
+    touch $tmpd/ERROR	# for child process error detection
+    exit 1		# root process trigger BEFORE_EXIT function
+}
+
+SET_MSG()	{
+    MSG="line:$LINENO $@"
+}
+
+################################################################
+cad=./CA
+days=$((5 * 365))
+
+################################################################
+MSG FATAL while making OPENSSL_CONF file.
+export OPENSSL_CONF=$tmpd/openssl.conf
+
+cat	<<EOF	> $OPENSSL_CONF
+[ ca ]
+default_ca      = CA_default
+
+[ CA_default ]
+dir             = $cad
+policy          = policy_minimum
+
+[ policy_minimum ]
+countryName		= match
+stateOrProvinceName	= match
+organizationName	= match
+organizationalUnitName	= optional
+commonName		= supplied
+emailAddress		= optional
+
+EOF
+
+################################################################
+MSG FATAL while making CA directories.
+[ -d $cad ] && rm -rf $cad
+mkdir -p $cad/{certs,private,crl,newcerts}
+chmod 700 $cad/private
+echo "01" > $cad/serial
+touch $cad/index.txt
+
+################################################################
+MSG FATAL while generating private key.
+openssl req	\
+	-new -x509 -newkey rsa:2048	\
+	-out cacert.pem	\
+	-keyout $cad/private/cakey.pem	\
+	-days 1825
+
+
+################################################################
+SET_MSG INFO while exiting
+exit 0
