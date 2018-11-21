@@ -70,8 +70,9 @@ MSG="line:$LINENO FATAL while making CA directories."
 [ -d $cad ] && rm -rf $cad
 mkdir -p $cad/$fqdn
 chmod 700 $cad $cad/$fqdn
-echo "01" > $cad/serial
-touch $cad/index.txt
+
+# echo "01" > $cad/serial
+# touch $cad/index.txt
 
 ################################################################
 MSG="line:$LINENO ERROR while generating a self signed root certificatea self signed root certificate."
@@ -88,8 +89,8 @@ openssl rsa	\
 	-passin pass:mypass	\
 	-out $cad/$fqdn/privkey.pem
 
-# MSG="line:$LINENO ERROR while removing encrypted private key."
-# rm $cad/$fqdn/privkey.enc.pem
+MSG="line:$LINENO ERROR while removing encrypted private key."
+rm $cad/$fqdn/privkey.enc.pem
 
 ################################################################
 MSG line:$LINENO INFO generated for $fqdn
