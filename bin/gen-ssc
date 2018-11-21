@@ -68,8 +68,8 @@ EOF
 ################################################################
 MSG="line:$LINENO FATAL while making CA directories."
 [ -d $cad ] && rm -rf $cad
-mkdir -p $cad
-chmod 700 $cad
+mkdir -p $cad/$fqdn
+chmod 700 $cad $cad/$fqdn
 echo "01" > $cad/serial
 touch $cad/index.txt
 
@@ -78,20 +78,23 @@ MSG="line:$LINENO ERROR while generating a self signed root certificatea self si
 openssl req -x509	\
 	-newkey rsa:2048	\
 	-passout pass:mypass	\
-	-keyout $cad/keyencd.pem\
-	-out $cad/ca.pem	\
+	-keyout $cad/$fqdn/privkey.enc.pem\
+	-out $cad/$fqdn/fullchain.pem	\
 	-days $days
 
 MSG="line:$LINENO ERROR while decrypting private key."
 openssl rsa	\
-	-in $cad/keyencd.pem	\
+	-in $cad/$fqdn/privkey.enc.pem	\
 	-passin pass:mypass	\
-	-out $cad/key.pem
+	-out $cad/$fqdn/privkey.pem
+
+# MSG="line:$LINENO ERROR while removing encrypted private key."
+# rm $cad/$fqdn/privkey.enc.pem
 
 ################################################################
 MSG line:$LINENO INFO generated for $fqdn
 MSG="line:$LINENO ERROR while output certification contents."
-openssl x509 -in $cad/ca.pem -text
+openssl x509 -in $cad/$fqdn/fullchain.pem -text
 
 ################################################################
 MSG="line:$LINENO INFO while exiting"
