@@ -1,0 +1,103 @@
+#!/bin/bash
+
+set -Cu
+set -Ee
+set -o pipefail
+
+based=$(dirname $0)/..
+pname=$(basename $0)
+stime=$(date +%Y%m%d%H%M%S%Z)
+
+exec 3>&2
+# logd=$based/log
+# exec 3>&2 2>$logd/$pname.$stime.$$.log
+# set -vx
+
+MSG() {
+    echo "$pname pid:$$ stime:$stime etime:$(date +%Y%m%d%H%M%S%Z) $@"	>&3
+}
+
+tmpd=$(mktemp -d --suffix=".$pname.$stime.$$")
+if [ 0 -ne "$?" ] ; then
+    MSG FATAL can not make temporally directory.
+    exit 1
+fi
+
+trap 'BEFORE_EXIT' EXIT
+BEFORE_EXIT()	{
+    rm -rf $tmpd
+}
+
+trap 'ERROR_HANDLER' ERR
+export MSG
+ERROR_HANDLER()	{
+    [ "$MSG" ] && MSG $MSG
+    touch $tmpd/ERROR	# for child process error detection
+    exit 1		# root process trigger BEFORE_EXIT function
+}
+
+################################################################
+cad=./CA
+days=$((100 * 365))
+
+MSG="line:$LINENO ERROR host fqdn required."
+[ "$#" -ge 1 ]
+fqdn=$1
+
+passwd=mypass
+
+###############################################################
+MSG="line:$LINENO FATAL while making OPENSSL_CONF file."
+export OPENSSL_CONF=$tmpd/openssl.conf
+
+cat	<<EOF	> $OPENSSL_CONF
+[ req ]
+distinguished_name     = req_distinguished_name
+prompt                 = no
+
+[ req_distinguished_name ]
+C                      = GB
+ST                     = Test State or Province
+L                      = Test Locality
+O                      = Test Organization
+OU                     = Test Organizational Unit Name
+CN                     = $fqdn
+emailAddress           = noexistent@example.com
+
+EOF
+
+################################################################
+MSG="line:$LINENO FATAL while making CA directories."
+[ -d $cad ] && rm -rf $cad
+mkdir -p $cad/$fqdn
+chmod 700 $cad $cad/$fqdn
+
+# echo "01" > $cad/serial
+# touch $cad/index.txt
+
+################################################################
+MSG="line:$LINENO ERROR while generating a self signed root certificatea self signed root certificate."
+openssl req -x509	\
+	-newkey rsa:2048	\
+	-passout pass:mypass	\
+	-keyout $cad/$fqdn/privkey.enc.pem\
+	-out $cad/$fqdn/fullchain.pem	\
+	-days $days
+
+MSG="line:$LINENO ERROR while decrypting private key."
+openssl rsa	\
+	-in $cad/$fqdn/privkey.enc.pem	\
+	-passin pass:mypass	\
+	-out $cad/$fqdn/privkey.pem
+
+MSG="line:$LINENO ERROR while removing encrypted private key."
+rm $cad/$fqdn/privkey.enc.pem
+
+################################################################
+MSG line:$LINENO INFO generated for $fqdn
+MSG="line:$LINENO ERROR while output certification contents."
+openssl x509 -in $cad/$fqdn/fullchain.pem -text
+
+################################################################
+MSG="line:$LINENO INFO while exiting"
+exit 0
