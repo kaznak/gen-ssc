@@ -69,7 +69,7 @@ EOF
 
 ################################################################
 MSG="line:$LINENO FATAL while making CA directories."
-[ -d $cad ] && rm -rf $cad
+# [ -d $cad/$fqdn ] && rm -rf $cad/$fqdn
 mkdir -p $cad/$fqdn
 chmod 700 $cad $cad/$fqdn
 
