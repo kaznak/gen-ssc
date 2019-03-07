@@ -37,12 +37,13 @@ ERROR_HANDLER()	{
 }
 
 ################################################################
-cad=./CA
 days=$((100 * 365))
 
 MSG="line:$LINENO ERROR host fqdn required."
 [ "$#" -ge 1 ]
 fqdn=$1
+
+cad=${2:-./CA}
 
 passwd=mypass
 
